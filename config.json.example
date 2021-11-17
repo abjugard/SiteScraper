@@ -1,0 +1,18 @@
+{
+  "targets": [
+    {
+      "topic": "some product {} available to buy",
+      "url": "https://example.com/product/url",
+      "selector": ".cssSelector.for.elementToCheck",
+      "positive_text": "the positive outcome text to match",
+      "subscribers": [
+        "some@email.address",
+        "some.other@email.address"
+      ]
+    }
+  ],
+  "sendgrid": {
+    "api_key": "sendgrid_api_key",
+    "sender": "sender@email.address"
+  }
+}
