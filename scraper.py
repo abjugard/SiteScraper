@@ -94,7 +94,7 @@ def send_mail(target, positive_outcome):
     sg = SendGridAPIClient(config.sendgrid.api_key)
     sg.send(message)
   except Exception as e:
-    print(str(e))
+    print(str(e), file=sys.stderr)
     sys.exit(1)
 
 
