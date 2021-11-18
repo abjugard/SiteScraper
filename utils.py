@@ -14,3 +14,6 @@ class NestedNamespace(SimpleNamespace):
       return [self.__get_entry__(item) for item in value]
     else:
       return value
+
+  def to_dict(self):
+    return self.__dict__

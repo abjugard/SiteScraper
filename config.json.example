@@ -1,4 +1,5 @@
 {
+  "admin_email": "admin@email.address",
   "targets": [
     {
       "topic": "some product {} available to buy",

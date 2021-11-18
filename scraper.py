@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
+import asyncio
 import json
 import sys
-import asyncio
 
 from pathlib import Path
 from utils import NestedNamespace
@@ -14,6 +14,10 @@ from sendgrid.helpers.mail import Mail, \
     TrackingSettings, ClickTracking, OpenTracking
 
 root = Path(__file__).parent.absolute()
+
+project_url = 'https://github.com/abjugard/SiteScraper'
+project_promo_text = 'Generated using abjugard/SiteScraper!'
+project_footer = f'\n<br>\n<a href="{project_url}">{project_promo_text}</a>'
 
 
 def load_config():
@@ -66,46 +70,58 @@ def get_mail_data(target, positive_outcome):
   topic = target.topic.format(modifier)
 
   if positive_outcome:
-    return (topic + '!', f"""
-<h1>It {modifier} time, the {topic}! 🎉</h1>
-<h2><a href="{target.url}">Go go go! 🏎💨</a><h2>
-    """)
-
-  return (topic, f"""
-<h1>It {modifier} time!</h1>
-<h2>The {target.topic.format('is no longer')}. 😞<h2>
-    """)
+    return (topic + '!', (
+        f'<h1>It {modifier} time, the {topic}! 🎉</h1>\n'
+        f'<h2><a href="{target.url}">Go go go! 🏎💨</a></h2>'))
+  else:
+    return (topic, (
+        f'<h1>It {modifier} time!</h1>\n'
+        f"<h2>The {target.topic.format('is no longer')}. 😞<h2>"))
 
 
-def send_mail(target, positive_outcome):
-  subject, html_content = get_mail_data(target, positive_outcome)
-  footer = '\n<a href="https://github.com/abjugard/SiteScraper">' \
-      + 'Generated using abjugard/SiteScraper!</a>'
-
+def send_mail(to_emails, subject, html_content):
   message = Mail(
       from_email=config.sendgrid.sender,
-      to_emails=target.subscribers,
+      to_emails=to_emails,
       subject=subject,
-      html_content=html_content + footer)
+      html_content=html_content + project_footer)
   message.tracking_settings = TrackingSettings(
       ClickTracking(False, False),
       OpenTracking(False))
   try:
     sg = SendGridAPIClient(config.sendgrid.api_key)
-    sg.send(message)
+    response = sg.send(message)
+    print(response.status_code)
+    print(response.body)
+    print(response.headers)
   except Exception as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)
 
 
+def inform_subscribers(target, positive_outcome):
+  subject, html_content = get_mail_data(target, positive_outcome)
+  send_mail(target.subscribers, subject, html_content)
+
+
 async def main():
   for target in config.targets:
-    outcome = await get_state(target)
-    state_differs, is_first_check = state_changed(target.url, outcome)
-    log_message, _ = get_mail_data(target, outcome)
-    print(log_message)
-    if state_differs or (outcome and is_first_check):
-      send_mail(target, outcome)
+    try:
+      outcome = await get_state(target)
+      state_differs, is_first_check = state_changed(target.url, outcome)
+      log_message, _ = get_mail_data(target, outcome)
+      print(log_message)
+      if state_differs or (outcome and is_first_check):
+        inform_subscribers(target, outcome)
+    except Exception as e:
+      subject = f'Error occurred for target: {target.url}'
+      print(f'{subject} ({str(e)})', file=sys.stderr)
+      conf_json = json.dumps(target.to_dict(), ensure_ascii=False, indent=2)
+      body = (
+          f'<h1>{subject}</h1>\n'
+          f'<pre><code>Error: {str(e)}</code></pre>\n'
+          f'<pre><code>{conf_json}</code></pre>')
+      send_mail([config.admin_email], subject, body)
 
 
 if __name__ == '__main__':
