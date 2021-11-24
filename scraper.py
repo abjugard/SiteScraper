@@ -19,6 +19,8 @@ project_url = 'https://github.com/abjugard/SiteScraper'
 project_promo_text = 'Generated using abjugard/SiteScraper!'
 project_footer = f'\n<br>\n<a href="{project_url}">{project_promo_text}</a>'
 
+browser = None
+
 
 def load_config():
   conf_path = root / 'config.json'
@@ -29,13 +31,11 @@ def load_config():
 
 
 async def get_text(target):
-  browser = await launch(headless=True)
   page = await browser.newPage()
   await page.goto(target.url)
 
   button = await page.querySelector(target.selector)
   text = await page.evaluate('(element) => element.textContent', button)
-  await browser.close()
 
   return text.strip()
 
@@ -105,6 +105,8 @@ def inform_subscribers(target, positive_outcome):
 
 
 async def main():
+  global browser
+  browser = await launch(headless=True)
   for target in config.targets:
     try:
       outcome = await get_state(target)
@@ -122,6 +124,7 @@ async def main():
           f'<pre><code>Error: {str(e)}</code></pre>\n'
           f'<pre><code>{conf_json}</code></pre>')
       send_mail([config.admin_email], subject, body)
+  await browser.close()
 
 
 if __name__ == '__main__':
