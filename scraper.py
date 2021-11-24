@@ -32,18 +32,24 @@ def load_config():
 
 async def get_text(target):
   page = await browser.newPage()
-  await page.goto(target.url)
+  response = await page.goto(target.url)
+  if not response.ok:
+    if response.status != 404:
+      raise Exception(f'unexpected status {response.status}')
+    return (None, response.status)
 
-  button = await page.querySelector(target.selector)
-  text = await page.evaluate('(element) => element.textContent', button)
+  element = await page.querySelector(target.selector)
+  text = await page.evaluate('(element) => element.textContent', element)
 
-  return text.strip()
+  return (text.strip(), response.status)
 
 
 async def get_state(target):
-  text = await get_text(target)
+  text, status_code = await get_text(target)
+  if text is None:
+    return (None, status_code)
   outcome = text.lower() == target.positive_text.lower()
-  return outcome
+  return (outcome, status_code)
 
 
 def state_changed(url, new_state):
@@ -55,21 +61,23 @@ def state_changed(url, new_state):
   else:
     state_db = {}
 
-  is_first_check = url not in state_db
-  last_state = new_state if is_first_check else state_db[url]
+  first_check = url not in state_db
+  last_state = new_state if first_check else state_db[url]
   state_db[url] = new_state
 
   with state_db_path.open(mode='w', encoding='utf-8') as state_f:
     json.dump(state_db, state_f, ensure_ascii=False, indent=2)
 
-  return (last_state is not new_state, is_first_check)
+  return (new_state != last_state, first_check)
 
 
-def get_mail_data(target, positive_outcome):
-  modifier = 'is' if positive_outcome else 'is not'
+def get_mail_data(target, outcome, status_code):
+  modifier = 'is' if outcome else 'is not'
   topic = target.topic.format(modifier)
+  if outcome is None:
+    topic += f' ({status_code})'
 
-  if positive_outcome:
+  if outcome:
     return (topic + '!', (
         f'<h1>It {modifier} time, the {topic}! 🎉</h1>\n'
         f'<h2><a href="{target.url}">Go go go! 🏎💨</a></h2>'))
@@ -99,9 +107,10 @@ def send_mail(to_emails, subject, html_content):
     sys.exit(1)
 
 
-def inform_subscribers(target, positive_outcome):
-  subject, html_content = get_mail_data(target, positive_outcome)
-  send_mail(target.subscribers, subject, html_content)
+def inform_subscribers(target, outcome, status_code):
+  subject, html_content = get_mail_data(target, outcome, status_code)
+  recipients = config.admin_email if outcome is None else target.subscribers
+  send_mail(recipients, subject, html_content)
 
 
 async def main():
@@ -109,12 +118,15 @@ async def main():
   browser = await launch(headless=True)
   for target in config.targets:
     try:
-      outcome = await get_state(target)
-      state_differs, is_first_check = state_changed(target.url, outcome)
-      log_message, _ = get_mail_data(target, outcome)
+      outcome, status_code = await get_state(target)
+
+      state = status_code if outcome is None else outcome
+      changed, first_check = state_changed(target.url, state)
+
+      log_message, _ = get_mail_data(target, outcome, status_code)
       print(log_message)
-      if state_differs or (outcome and is_first_check):
-        inform_subscribers(target, outcome)
+      if changed or (outcome and first_check):
+        inform_subscribers(target, outcome, status_code)
     except Exception as e:
       subject = f'Error occurred for target: {target.url}'
       print(f'{subject} ({str(e)})', file=sys.stderr)
@@ -123,7 +135,11 @@ async def main():
           f'<h1>{subject}</h1>\n'
           f'<pre><code>Error: {str(e)}</code></pre>\n'
           f'<pre><code>{conf_json}</code></pre>')
-      send_mail([config.admin_email], subject, body)
+      try:
+        send_mail([config.admin_email], subject, body)
+      except Exception as e_mail:
+        browser.close()
+        raise e_mail
   await browser.close()
 
 
