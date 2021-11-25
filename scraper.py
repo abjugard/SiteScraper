@@ -87,12 +87,13 @@ def get_mail_data(target, outcome, status_code):
         f"<h2>The {target.topic.format('is no longer')}. 😞<h2>"))
 
 
-def send_mail(to_emails, subject, html_content):
+def send_mail(recipients, subject, html_content):
   message = Mail(
       from_email=config.sendgrid.sender,
-      to_emails=to_emails,
+      to_emails=config.sendgrid.sender,
       subject=subject,
       html_content=html_content + project_footer)
+  message.bcc = recipients
   message.tracking_settings = TrackingSettings(
       ClickTracking(False, False),
       OpenTracking(False))
