@@ -7,7 +7,8 @@ User=lowprivuser
 Group=lowprivuser
 Type=oneshot
 ExecStart=/opt/SiteScraper/scraper.py
-TimeoutStopSec=180
+TimeoutStartSec=120s
+TimeoutStopSec=120s
 KillMode=process
 KillSignal=SIGINT
 
