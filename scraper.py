@@ -84,7 +84,7 @@ def get_mail_data(target, outcome, status_code):
   else:
     return (topic, (
         f'<h1>It {modifier} time!</h1>\n'
-        f"<h2>The {target.topic.format('is no longer')}. 😞<h2>"))
+        f"<h2>The {target.topic.format('is no longer')}. 😞</h2>"))
 
 
 def send_mail(recipients, subject, html_content):
