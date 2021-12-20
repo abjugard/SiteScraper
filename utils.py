@@ -7,6 +7,9 @@ class NestedNamespace(SimpleNamespace):
     for key, value in dictionary.items():
       self.__setattr__(key, self.__get_entry__(value))
 
+  def __getattr__(self, key):
+    return None
+
   def __get_entry__(self, value):
     if isinstance(value, dict):
       return NestedNamespace(value)

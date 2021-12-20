@@ -118,6 +118,9 @@ async def main():
   global browser
   browser = await launch(headless=True)
   for target in config.targets:
+    if target.disabled:
+      print('skipping disabled target:', target.url)
+      continue
     try:
       outcome, status_code = await get_state(target)
 
