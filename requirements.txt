@@ -1,2 +1,2 @@
-pyppeteer==0.2.6
-sendgrid==6.9.0
+pyppeteer==1.*
+sendgrid==6.*
