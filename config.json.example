@@ -15,5 +15,6 @@
   "sendgrid": {
     "api_key": "sendgrid_api_key",
     "sender": "sender@email.address"
-  }
+  },
+  "browser": "/path/to/browser"
 }

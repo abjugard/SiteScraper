@@ -15,8 +15,9 @@ if the result differs from the run before it.
 
 ## Running
 Copy `config.json.example` to `config.json` and populate the values in it.
-Copy and modify `SiteScraper.service.example` to `SiteScraper.service` and 
-hardlink it to your systemd unit library. Copy and modify 
+The `browser` value is optional, pyppeteer will download a browser if not 
+specified. Copy and modify `SiteScraper.service.example` to `SiteScraper.service` 
+and hardlink it to your systemd unit library. Copy and modify 
 `SiteScraper.timer.example` to `SiteScraper.timer` and hardlink it to your 
 systemd unit library. 
 

@@ -116,7 +116,7 @@ def inform_subscribers(target, outcome, status_code):
 
 async def main():
   global browser
-  browser = await launch(headless=True)
+  browser = await launch(headless=True, executablePath=config.browser)
   for target in config.targets:
     if target.disabled:
       print('skipping disabled target:', target.url)
