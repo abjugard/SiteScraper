@@ -97,16 +97,18 @@ def get_mail_data(target, outcome, status_code):
 
 
 def send_mail(recipients, subject, html_content):
-  message = Mail(
-      from_email=config.sendgrid.sender,
-      to_emails=config.sendgrid.sender,
-      subject=subject,
-      html_content=html_content + project_footer)
-  message.bcc = recipients
-  message.tracking_settings = TrackingSettings(
-      ClickTracking(False, False),
-      OpenTracking(False))
+  if config.sendgrid.disabled:
+    return
   try:
+    message = Mail(
+        from_email=config.sendgrid.sender,
+        to_emails=config.sendgrid.sender,
+        subject=subject,
+        html_content=html_content + project_footer)
+    message.bcc = recipients
+    message.tracking_settings = TrackingSettings(
+        ClickTracking(False, False),
+        OpenTracking(False))
     sg = SendGridAPIClient(config.sendgrid.api_key)
     response = sg.send(message)
     print(response.status_code)
@@ -114,7 +116,6 @@ def send_mail(recipients, subject, html_content):
     print(response.headers)
   except Exception as e:
     print(str(e), file=sys.stderr)
-    sys.exit(1)
 
 
 def inform_subscribers(target, outcome, status_code):
@@ -123,23 +124,17 @@ def inform_subscribers(target, outcome, status_code):
   send_mail(recipients, subject, html_content)
 
 
-async def main():
-  global browser
-  browser = await launch(headless=True, executablePath=config.browser)
-  for target in config.targets:
-    if target.disabled:
-      print('skipping disabled target:', target.url)
-      continue
-    try:
-      outcome, status_code = await get_state(target)
+async def handle_target(target):
+  try:
+    outcome, status_code = await get_state(target)
 
-      state = status_code if outcome is None else outcome
-      changed, first_check = state_changed(target.url, state)
+    state = status_code if outcome is None else outcome
+    changed, first_check = state_changed(target.url, state)
 
-      log_message, _ = get_mail_data(target, outcome, status_code)
-      print(log_message)
-      if changed or (outcome and first_check):
-        inform_subscribers(target, outcome, status_code)
+    log_message, _ = get_mail_data(target, outcome, status_code)
+    print(log_message)
+    if changed or (outcome and first_check):
+      inform_subscribers(target, outcome, status_code)
   except Exception as e:
     e_msg = str(e)
     if any(ignored in e_msg for ignored in ignored_errors):
@@ -151,12 +146,20 @@ async def main():
     body = (
         f'<h1>{subject}</h1>\n'
         f'<pre><code>Error: {e_msg}</code></pre>\n'
-          f'<pre><code>{conf_json}</code></pre>')
-      try:
-        send_mail([config.admin_email], subject, body)
-      except Exception as e_mail:
-        browser.close()
-        raise e_mail
+        f'<pre><code>{conf_json}</code></pre>')
+    send_mail([config.admin_email], subject, body)
+
+
+async def main():
+  global browser
+  browser = await launch(headless=True, executablePath=config.browser)
+  tasks = []
+  for target in config.targets:
+    if target.disabled:
+      print('skipping disabled target:', target.url)
+    else:
+      tasks.append(handle_target(target))
+  await asyncio.gather(*tasks)
   await browser.close()
 
 
