@@ -14,6 +14,8 @@ from sendgrid.helpers.mail import Mail, \
     TrackingSettings, ClickTracking, OpenTracking
 
 root = Path(__file__).parent.absolute()
+config_path = root / 'config.json'
+state_db_path = root / 'last_state.json'
 
 project_url = 'https://github.com/abjugard/SiteScraper'
 project_promo_text = 'Generated using abjugard/SiteScraper!'
@@ -27,9 +29,22 @@ ignored_errors = [
 ]
 
 
+def load_state():
+  if state_db_path.is_file():
+    with state_db_path.open(encoding='utf-8') as state_f:
+      state_db = json.load(state_f)
+  else:
+    state_db = {}
+  return state_db
+
+
+def flush_state():
+  with state_db_path.open(mode='w', encoding='utf-8') as state_f:
+    json.dump(state_db, state_f, ensure_ascii=False, indent=2)
+
+
 def load_config():
-  conf_path = root / 'config.json'
-  with conf_path.open(encoding='utf-8') as conf_f:
+  with config_path.open(encoding='utf-8') as conf_f:
     conf = json.load(conf_f)
 
   return NestedNamespace(conf)
@@ -58,20 +73,9 @@ async def get_state(target):
 
 
 def state_changed(url, new_state):
-  state_db_path = root / 'last_state.json'
-
-  if state_db_path.is_file():
-    with state_db_path.open(encoding='utf-8') as state_f:
-      state_db = json.load(state_f)
-  else:
-    state_db = {}
-
   first_check = url not in state_db
   last_state = new_state if first_check else state_db[url]
   state_db[url] = new_state
-
-  with state_db_path.open(mode='w', encoding='utf-8') as state_f:
-    json.dump(state_db, state_f, ensure_ascii=False, indent=2)
 
   return (new_state != last_state, first_check)
 
@@ -158,5 +162,8 @@ async def main():
 
 if __name__ == '__main__':
   config = load_config()
+  state_db = load_state()
 
   asyncio.new_event_loop().run_until_complete(main())
+  
+  flush_state()
