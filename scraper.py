@@ -21,6 +21,11 @@ project_footer = f'\n<br>\n<a href="{project_url}">{project_promo_text}</a>'
 
 browser = None
 
+ignored_errors = [
+  'Connection is closed',
+  'Navigation Timeout Exceeded'
+]
+
 
 def load_config():
   conf_path = root / 'config.json'
@@ -131,13 +136,17 @@ async def main():
       print(log_message)
       if changed or (outcome and first_check):
         inform_subscribers(target, outcome, status_code)
-    except Exception as e:
-      subject = f'Error occurred for target: {target.url}'
-      print(f'{subject} ({str(e)})', file=sys.stderr)
-      conf_json = json.dumps(target.to_dict(), ensure_ascii=False, indent=2)
-      body = (
-          f'<h1>{subject}</h1>\n'
-          f'<pre><code>Error: {str(e)}</code></pre>\n'
+  except Exception as e:
+    e_msg = str(e)
+    if any(ignored in e_msg for ignored in ignored_errors):
+      return
+
+    subject = f'Exception for: {target.url}'
+    print(f'{subject} ({e_msg})', file=sys.stderr)
+    conf_json = json.dumps(target.to_dict(), ensure_ascii=False, indent=2)
+    body = (
+        f'<h1>{subject}</h1>\n'
+        f'<pre><code>Error: {e_msg}</code></pre>\n'
           f'<pre><code>{conf_json}</code></pre>')
       try:
         send_mail([config.admin_email], subject, body)
