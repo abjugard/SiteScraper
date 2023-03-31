@@ -158,9 +158,7 @@ async def main():
   browser = await launch(headless=True, executablePath=config.browser)
   tasks = []
   for target in config.targets:
-    if target.disabled:
-      print('skipping disabled target:', target.url)
-    else:
+    if not target.disabled:
       tasks.append(handle_target(target))
   await asyncio.gather(*tasks)
   await browser.close()
