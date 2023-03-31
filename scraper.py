@@ -5,6 +5,7 @@ import json
 import sys
 
 from pathlib import Path
+from time import time
 from utils import NestedNamespace
 
 from pyppeteer import launch
@@ -153,7 +154,7 @@ async def handle_target(target):
     send_mail([config.admin_email], subject, body)
 
 
-async def main():
+async def scraper():
   global browser
   browser = await launch(headless=True, executablePath=config.browser)
   tasks = []
@@ -165,9 +166,17 @@ async def main():
 
 
 if __name__ == '__main__':
+  start = time()
+
   config = load_config()
   state_db = load_state()
 
-  asyncio.new_event_loop().run_until_complete(main())
+  asyncio.new_event_loop().run_until_complete(scraper())
   
   flush_state()
+
+  runtime = time() - start
+  unit = 'ms' if runtime < 1 else 'seconds'
+  if runtime < 1:
+    runtime = runtime * 1e3
+  print(f'Finished scanning in {runtime:.2f} {unit}')
