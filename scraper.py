@@ -25,7 +25,8 @@ browser = None
 
 ignored_errors = [
   'Connection is closed',
-  'Navigation Timeout Exceeded'
+  'Navigation Timeout Exceeded',
+  'net::ERR_'
 ]
 
 
