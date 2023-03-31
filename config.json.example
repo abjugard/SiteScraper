@@ -2,6 +2,7 @@
   "admin_email": "admin@email.address",
   "targets": [
     {
+      "disabled": false,
       "topic": "some product {} available to buy",
       "url": "https://example.com/product/url",
       "selector": ".cssSelector.for.elementToCheck",
@@ -9,7 +10,8 @@
       "subscribers": [
         "some@email.address",
         "some.other@email.address"
-      ]
+      ],
+      "ignore_error": false
     }
   ],
   "sendgrid": {

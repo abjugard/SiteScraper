@@ -142,6 +142,8 @@ async def handle_target(target):
 
     subject = f'Exception for: {target.url}'
     print(f'{subject} ({e_msg})', file=sys.stderr)
+    if target.ignore_error:
+      return
     conf_json = json.dumps(target.to_dict(), ensure_ascii=False, indent=2)
     body = (
         f'<h1>{subject}</h1>\n'
